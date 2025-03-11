@@ -14,3 +14,4 @@ proarc_file_transfer = { path = "crates/proarc_file_transfer" }
 proarc_connection = { path = "crates/proarc_connection" }
 
 tokio = { version = "1.0", features = ["full"] }
+dotenvy = "0.15.7"
