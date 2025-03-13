@@ -1,6 +1,7 @@
-use std::env;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use proarc_database::*;
+use proarc_file_transfer::*;
 
 pub async fn listen(addr: String) {
     let listener = TcpListener::bind(addr).await.unwrap();
@@ -21,12 +22,16 @@ pub async fn listen(addr: String) {
                     return;
                 }
 
-                println!("Received: {}", String::from_utf8_lossy(&buf[0..n]));
+                let rcv = String::from_utf8_lossy(&buf[0..n]);
 
-                socket
-                    .write_all(&buf[0..n])
-                    .await
-                    .expect("failed to write data to socket");
+                println!("Received: {}", rcv);
+
+                match rcv.to_uppercase().as_str() {
+                    "AUTH" => proarc_database::auth::handle_auth(&mut socket).await,
+                    "DB" => println!("Connecting to database..."),
+                    "FILE" => println!("Connecting to file server..."),
+                    _ => println!("Not a valid request"),
+                }
             }
         });
     }

@@ -10,8 +10,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Starting server at {}", server_addr);
 
-    conn::listen(server_addr)
-        .await;
+    conn::listen(server_addr).await;
     
     Ok(())
 }
