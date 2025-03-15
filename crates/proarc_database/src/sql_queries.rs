@@ -1,1 +1,1 @@
-pub static GET_HASH_AND_SALT: &str = "SELECT hash_and_salt, salt FROM usuario";
+pub static GET_HASH_AND_SALT: &str = "SELECT hash_and_salt, salt FROM usuario WHERE username = $1";
