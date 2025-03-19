@@ -1,4 +1,5 @@
-/target
+target/
+tokens/
 
 Cargo.lock
 .env

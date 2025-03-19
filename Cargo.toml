@@ -13,3 +13,8 @@ proarc_connection = { path = "crates/proarc_connection" }
 
 tokio = { version = "1.0", features = ["full"] }
 dotenvy = "0.15.7"
+
+[[bin]]
+edition = "2021"
+name = "Proarc-Server"
+path = "src/main.rs"
