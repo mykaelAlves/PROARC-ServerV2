@@ -3,6 +3,8 @@ use std::io::Write;
 use std::path::Path;
 
 use rand::Rng;
+use sqlx::postgres::PgRow;
+use sqlx::{query, Row};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -10,6 +12,14 @@ use sha256::digest;
 
 use crate::conn::establish_connection;
 use crate::sql_queries;
+
+struct User {
+    id: u32,
+    nome: String,
+    username: String,
+    hash_and_salt: String,
+    salt: String,
+}
 
 pub async fn handle_auth(socket: &mut TcpStream) {
     println!("\nAuthenticating...");
@@ -30,17 +40,12 @@ pub async fn handle_auth(socket: &mut TcpStream) {
     };
     println!("User: {}", user);
 
-    let res = match sqlx::query(sql_queries::GET_HASH_AND_SALT)
+    let res: (String, String) = query(sql_queries::GET_HASH_AND_SALT)
         .bind(user.as_str())
+        .map(|row: PgRow| (row.get("hash_and_salt"), row.get("salt")))
         .fetch_one(&pool)
         .await
-    {
-        Ok(record) => record,
-        Err(sqlx::Error::Database(db_err)) if db_err.code() == Some(std::borrow::Cow::Borrowed("22021")) => {
-            panic!("Invalid byte sequence for encoding 'UTF8': {}", db_err)
-        }
-        Err(e) => panic!("Unexpected error: {}", e),
-    };
+        .unwrap();
 
     println!("{:#?}", res);
 
@@ -83,5 +88,6 @@ pub async fn handle_auth(socket: &mut TcpStream) {
         },
         Err(e) => panic!("Failed to open file: {}", e),
     }
+
     socket.write(token.as_bytes()).await.unwrap();
 }
