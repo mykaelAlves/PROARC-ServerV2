@@ -1,5 +1,5 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
+use tokio::io::AsyncReadExt;
 use proarc_database::*;
 use proarc_file_transfer::*;
 
@@ -27,9 +27,9 @@ pub async fn listen(addr: String) {
                 println!("Received: {}", rcv);
 
                 match rcv.to_uppercase().as_str() {
-                    "AUTH" => proarc_database::auth::handle_auth(&mut socket).await,
-                    "DB" => println!("Connecting to database..."),
-                    "FILE" => println!("Connecting to file server..."),
+                    "AUTH" => auth::handle_auth(&mut socket).await,
+                    "DB" => todo!(),
+                    "FILE" => file::handle_file(&mut socket).await,
                     _ => println!("Not a valid request"),
                 }
             }

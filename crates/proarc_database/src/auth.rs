@@ -1,5 +1,4 @@
 use std::env;
-use std::io::Write;
 use std::path::Path;
 
 use rand::Rng;
@@ -13,16 +12,10 @@ use sha256::digest;
 use crate::conn::establish_connection;
 use crate::sql_queries;
 
-struct User {
-    id: u32,
-    nome: String,
-    username: String,
-    hash_and_salt: String,
-    salt: String,
-}
-
 pub async fn handle_auth(socket: &mut TcpStream) {
-    println!("\nAuthenticating...");
+    eprintln!("\nAuthenticating...");
+
+    dotenvy::dotenv().ok();
 
     let database_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
@@ -38,7 +31,7 @@ pub async fn handle_auth(socket: &mut TcpStream) {
 
         String::from_utf8_lossy(&buffer).to_string().replace("\0", "")
     };
-    println!("User: {}", user);
+    eprintln!("User: {}", user);
 
     let res: (String, String) = query(sql_queries::GET_HASH_AND_SALT)
         .bind(user.as_str())
@@ -47,9 +40,7 @@ pub async fn handle_auth(socket: &mut TcpStream) {
         .await
         .unwrap();
 
-    println!("{:#?}", res);
-
-    socket.write("SALT".as_bytes()).await.unwrap();
+    socket.write(res.1.as_bytes()).await.unwrap();
 
     let hash_and_salt = {
         let mut buffer = [0; 1024];
@@ -57,21 +48,17 @@ pub async fn handle_auth(socket: &mut TcpStream) {
 
         String::from_utf8_lossy(&buffer).to_string()
     };
-    println!("Hash and salt: {}", hash_and_salt);
-    println!("Hash and salt: {}", digest("PasswordSALT"));
 
     if hash_and_salt.eq(&digest("PasswordSALT")) {
-        println!("Authentication failed");
+        eprintln!("Authentication failed");
         socket.write("NOT OK".as_bytes()).await.unwrap();
 
         return
     }
 
-    println!("Authentication successful");
     socket.write("OK".as_bytes()).await.unwrap();
 
     let log_path = env::var("LOG_PATH").expect("LOG_PATH must be set");
-    println!("Logging to {}", log_path);
 
     let token: String = {
         let mut rng = rand::thread_rng();
@@ -80,8 +67,7 @@ pub async fn handle_auth(socket: &mut TcpStream) {
         .map(|_| rng.gen_range('@'..='Z'))
         .collect()
     };
-    println!("Token: {}", token);
-    println!("{:?}", Path::new(&log_path).join(&token));
+
     match File::create(Path::new(&log_path).join(&token)).await {
         Ok(_) => {
             ()

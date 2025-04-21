@@ -1,3 +1,3 @@
 pub mod auth;
-mod conn;
+pub mod conn;
 mod sql_queries;
