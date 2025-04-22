@@ -1,4 +1,14 @@
 use std::{fs, env};
+use proarc_connection::*;
+
+async fn server() {
+    dotenvy::dotenv().ok();
+
+    let server_addr = env::var("SERVER_ADDR")
+        .expect("SERVER_ADDR must be set");
+    eprintln!("Starting server at {}", server_addr);
+    conn::listen(server_addr).await;
+}
 
 fn create_file_in_bucket() {
     dotenvy::dotenv().ok();

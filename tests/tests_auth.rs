@@ -7,7 +7,7 @@ async fn server() {
 
     let server_addr = env::var("SERVER_ADDR")
         .expect("SERVER_ADDR must be set");
-    println!("Starting server at {}", server_addr);
+    eprintln!("Starting server at {}", server_addr);
     conn::listen(server_addr).await;
 }
 
@@ -22,6 +22,8 @@ async fn simple_login() {
     tokio::spawn(async move {
         server().await;
     }); 
+
+    tokio::time::sleep(time::Duration::from_millis(100)).await;
 
     dotenvy::dotenv().ok();
 
