@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 proarc_database = { path = "../proarc_database" }
 proarc_file_transfer = { path = "../proarc_file_transfer" }
+proarc_utils = { path = "../proarc_utils" }
 
 tokio = { version = "1.0", features = ["full"] }
 dotenvy = "0.15.7"

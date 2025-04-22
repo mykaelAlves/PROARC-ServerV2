@@ -1,11 +1,12 @@
 use std::env;
 use proarc_connection::*;
-use tokio::{io::AsyncReadExt, net::TcpStream};
+use tokio::{io::AsyncReadExt, net::TcpStream, time};
 
 async fn server() {
     dotenvy::dotenv().ok();
 
-    let server_addr = env::var("SERVER_ADDR").expect("SERVER_ADDR must be set");
+    let server_addr = env::var("SERVER_ADDR")
+        .expect("SERVER_ADDR must be set");
     println!("Starting server at {}", server_addr);
     conn::listen(server_addr).await;
 }
@@ -25,12 +26,15 @@ async fn simple_login() {
     dotenvy::dotenv().ok();
 
     let mut stream = TcpStream::
-        connect(env::var("SERVER_ADDR").expect("SERVER_ADDR must be set"))
+        connect(env::var("SERVER_ADDR")
+        .expect("SERVER_ADDR must be set"))
         .await
         .unwrap();
 
     // First request and response: go to auth service
     stream.try_write(b"AUTH").unwrap();
+    time::sleep(time::Duration::from_millis(100)).await;
+    stream.try_write(b"nil").unwrap();
     let res: String = get_response(&mut stream).await;
     assert_eq!(res, "OK", 
         "Testing the 1st step of the authentication process: the server should respond with 'OK'");

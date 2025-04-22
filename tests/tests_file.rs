@@ -9,7 +9,7 @@ fn create_file_in_bucket() {
     let _ = fs::create_dir_all(&bucket_path);
 
     let file_path = format!("{}/test.txt", bucket_path);
-    let _ = fs::File::create(file_path);
+    let _ = fs::File::create_new(file_path);
 }
 
 #[tokio::test]
