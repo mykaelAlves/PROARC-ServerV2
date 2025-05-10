@@ -5,13 +5,19 @@ use rand::Rng;
 use sqlx::postgres::PgRow;
 use sqlx::{query, Row};
 use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use sha256::digest;
 
 use crate::conn::establish_connection;
 use crate::sql_queries;
 
+struct PasswordData {
+    hash_and_salt: String,
+    salt: String
+}
+
+// TODO
 pub async fn handle_auth(socket: &mut TcpStream) {
     eprintln!("\nAuthenticating...");
 
@@ -25,31 +31,26 @@ pub async fn handle_auth(socket: &mut TcpStream) {
 
     socket.write("OK".as_bytes()).await.unwrap();
 
-    let user = {
-        let mut buffer = [0; 1024];
-        socket.read(&mut buffer).await.unwrap();
-
-        String::from_utf8_lossy(&buffer).to_string().replace("\0", "")
-    };
+    let user = proarc_utils::read_message(socket).await;
     eprintln!("User: {}", user);
 
-    let res: (String, String) = query(sql_queries::GET_HASH_AND_SALT)
+    let pwd: PasswordData = query(sql_queries::GET_HASH_AND_SALT)
         .bind(user.as_str())
-        .map(|row: PgRow| (row.get("hash_and_salt"), row.get("salt")))
+        .map(
+            |row: PgRow| PasswordData { 
+                hash_and_salt: row.get("hash_and_salt"),
+                salt: row.get("salt") 
+            })
         .fetch_one(&pool)
         .await
         .unwrap();
 
-    socket.write(res.1.as_bytes()).await.unwrap();
+    socket.write(pwd.salt.as_bytes()).await.unwrap();
 
-    let hash_and_salt = {
-        let mut buffer = [0; 1024];
-        socket.read(&mut buffer).await.unwrap();
+    let sent_pwd_hash = proarc_utils::read_message(socket).await;
+    let true_pwd_hash = digest(pwd.hash_and_salt);
 
-        String::from_utf8_lossy(&buffer).to_string()
-    };
-
-    if hash_and_salt.eq(&digest("PasswordSALT")) {
+    if sent_pwd_hash.eq(&true_pwd_hash) {
         eprintln!("Authentication failed");
         socket.write("NOT OK".as_bytes()).await.unwrap();
 

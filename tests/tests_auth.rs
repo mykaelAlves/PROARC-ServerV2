@@ -19,11 +19,24 @@ async fn get_response(stream: &mut TcpStream) -> String {
 
 #[tokio::test]
 async fn simple_login() {
+    struct TestData {
+        token: String,
+        username: String,
+        password: String,
+    }
+
+    dotenvy::dotenv().ok();
+
+    let test_data = TestData {
+        token: String::from("nil"),
+        username: String::from("admin"),
+        password: env::var("ADM_PASSWORD")
+            .expect("PASSWORD must be set"),
+    };
+
     tokio::spawn(async move {
         server().await;
     }); 
-
-    dotenvy::dotenv().ok();
 
     let mut stream = TcpStream::
         connect(env::var("SERVER_ADDR")
@@ -34,20 +47,19 @@ async fn simple_login() {
     // First request and response: go to auth service
     stream.try_write(b"AUTH").unwrap();
     time::sleep(time::Duration::from_millis(100)).await;
-    stream.try_write(b"nil").unwrap();
+    stream.try_write(test_data.token.as_bytes()).unwrap();
     let res: String = get_response(&mut stream).await;
     assert_eq!(res, "OK", 
         "Testing the 1st step of the authentication process: the server should respond with 'OK'");
 
     // Second request and response: get salt
-    stream.try_write(b"ADM").unwrap();
+    stream.try_write(test_data.username.as_bytes()).unwrap();
     let salt: String = get_response(&mut stream).await;
     assert_eq!(salt, "SALT", 
         "Testing the 2st step of the authentication process: the server should respond with the salt");
 
     // Third request and response: send hash and salt
-    let mut password: String = env::var("ADM_PASSWORD")
-        .expect("PASSWORD must be set");
+    let mut password: String = test_data.password.clone();
     password.push_str(&salt);
     stream.try_write(password.as_bytes()).unwrap();
     let res: String = get_response(&mut stream).await;
