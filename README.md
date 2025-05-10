@@ -1,5 +1,7 @@
 # PROARC ServerV2
 
+Based on: <https://github.com/EndPoint-Company/PROARC-server>
+
 ## Compilation and configuration
 
 1. Clone the repository;
@@ -12,6 +14,7 @@
     LOG_PATH = "<path>"
     ADM_PASSWORD = "<password>"
     FILES_BUCKET = "<path>"
+    MASTER_TOKEN = "<token name inside LOG_PATH>"
     ```
 
 4. Then go into *target/* and execute the generated binary;
