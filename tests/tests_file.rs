@@ -63,8 +63,8 @@ async fn upload_file() {
         "Testing the 2st step of the file upload process: the server should respond with 'OK'");
 
     // Third request and response
-    let files_dir_path = env::var("FILES_BUCKET")
-        .expect("FILES_BUCKET must be set");
+    let files_dir_path = env::var("TEST_FILES_PATH")
+        .expect("TEST_FILES_PATH must be set");
     let filename = "colors.png";
     let file_path = format!("{}/{}", files_dir_path, filename);
     stream.try_write(filename.as_bytes()).unwrap();

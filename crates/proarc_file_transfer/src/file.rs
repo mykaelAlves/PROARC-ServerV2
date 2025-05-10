@@ -1,5 +1,7 @@
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
-use std::{fs, env};
+//! Still needs to implement download and upload based on Reclamacao's titulo
+
+use tokio::{fs::read, io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+use std::{env, fs::{self, File}, io::Read};
 use proarc_utils::*;
 
 pub async fn handle_file(socket: &mut TcpStream) {
@@ -33,7 +35,7 @@ pub async fn handle_file(socket: &mut TcpStream) {
 }
 
 async fn upload_file(socket: &mut TcpStream) {
-    let filename = get_filename(socket).await;
+    let filename = read_message(socket).await;
     let (name, ext) = split_filename(filename, socket).await;
 
     send_positive(socket).await;
@@ -49,10 +51,35 @@ async fn upload_file(socket: &mut TcpStream) {
 }
 
 async fn download_file(socket: &mut TcpStream) {
-    let filename = get_filename(socket).await;
-    let (name, ext) = split_filename(filename, socket).await;
+    let filename = read_message(socket).await;
 
-    send_positive(socket).await;
+    match lookfor(&filename).await {
+        Ok(contents) => {
+            send_positive(socket).await;
+            send_file_contents(socket, contents).await;
+        },
+        Err(e) => {
+            send_negative(socket).await;
+            panic!("Could not download file: {}", e);
+        },
+    }
+}
+
+async fn send_file_contents(socket: &mut TcpStream, contents: Vec<u8>) {
+    for chunk in contents.chunks(1024) {
+        socket.write(chunk).await.unwrap();
+    }
+}
+
+async fn lookfor(filename: &str) -> std::io::Result<Vec<u8>> {
+    dotenvy::dotenv().ok();
+
+    let bucket_path = env::var("FILES_BUCKET")
+        .expect("FILES_BUCKET must be set");
+
+    let file_path = format!("{}/{}", bucket_path, filename);
+
+    read(file_path).await
 }
 
 fn check_bucket() -> Result<(), std::io::Error> {
@@ -62,12 +89,6 @@ fn check_bucket() -> Result<(), std::io::Error> {
         .expect("FILES_BUCKET must be set");
 
     fs::create_dir_all(&bucket_path)
-}
-
-async fn get_filename(socket: &mut TcpStream) -> String {
-    let filename: String = read_message(socket).await;
-
-    filename
 }
 
 // wrap return in Result and panic only in the main pipeline
