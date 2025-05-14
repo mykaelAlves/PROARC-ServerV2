@@ -41,7 +41,7 @@ pub async fn listen(addr: String) {
                                 auth::handle_auth(&mut socket).await;
                             } else {
                                 eprintln!("Invalid token: {}", token);
-                                send_negative(&mut socket).await;
+                                send_negative(&mut socket, None).await;
                             }
                             break;
                         }

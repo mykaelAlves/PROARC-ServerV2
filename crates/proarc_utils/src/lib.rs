@@ -8,8 +8,15 @@ pub async fn send_positive(socket: &mut TcpStream) {
     socket.write(POSITIVE).await.unwrap();
 }
 
-pub async fn send_negative(socket: &mut TcpStream) {
-    socket.write(NEGATIVE).await.unwrap();
+pub async fn send_negative(socket: &mut TcpStream, msg: Option<&str>) {
+    let mut msg_ = String::from_utf8_lossy(NEGATIVE).to_string();
+
+    if let Some(m) = msg {
+        msg_.push_str("/n");
+        msg_.push_str(&m);
+    }
+
+    socket.write(msg_.as_bytes()).await.unwrap();
 }
 
 pub async fn send_message(socket: &mut TcpStream, message: &str) {

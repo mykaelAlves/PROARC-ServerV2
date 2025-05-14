@@ -1,6 +1,7 @@
 use std::env;
 use std::path::Path;
 
+use proarc_utils::{send_negative, send_positive};
 use rand::Rng;
 use sqlx::postgres::PgRow;
 use sqlx::{query, Row};
@@ -17,7 +18,6 @@ struct PasswordData {
     salt: String
 }
 
-// TODO
 pub async fn handle_auth(socket: &mut TcpStream) {
     eprintln!("\nAuthenticating...");
 
@@ -29,7 +29,7 @@ pub async fn handle_auth(socket: &mut TcpStream) {
         .await
         .unwrap();
 
-    socket.write("OK".as_bytes()).await.unwrap();
+    send_positive(socket).await;
 
     let user = proarc_utils::read_message(socket).await;
     eprintln!("User: {}", user);
@@ -51,13 +51,11 @@ pub async fn handle_auth(socket: &mut TcpStream) {
     let true_pwd_hash = digest(pwd.hash_and_salt);
 
     if sent_pwd_hash.eq(&true_pwd_hash) {
-        eprintln!("Authentication failed");
-        socket.write("NOT OK".as_bytes()).await.unwrap();
-
-        return
+        send_negative(socket, Some("Authentication failed")).await;
+        panic!("Authentication failed");
     }
 
-    socket.write("OK".as_bytes()).await.unwrap();
+    send_positive(socket).await;
 
     let log_path = env::var("LOG_PATH").expect("LOG_PATH must be set");
 
