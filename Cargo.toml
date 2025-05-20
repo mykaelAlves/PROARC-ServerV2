@@ -16,6 +16,7 @@ proarc_utils = { path = "crates/proarc_utils" }
 
 tokio = { version = "1.0", features = ["full"] }
 dotenvy = "0.15.7"
+tracing = "0.1.41"
 
 [[bin]]
 edition = "2021"

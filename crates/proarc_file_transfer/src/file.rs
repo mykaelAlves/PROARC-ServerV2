@@ -1,8 +1,15 @@
 //! Still needs to implement download and upload based on Reclamacao's titulo
 
-use tokio::{fs::read, io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
-use std::{env, fs::{self, File}, io::Read};
+use std::{io, time::Duration, env, fs::{self}};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    net::TcpStream,
+    time::timeout,
+};
+use tracing::{debug, error, instrument};
 use proarc_utils::*;
+
+const TIMEOUT_FILE_UPLOAD: Duration = Duration::from_secs(10);
 
 pub async fn handle_file(socket: &mut TcpStream) {
     eprintln!("Connecting to file server...");
@@ -44,11 +51,67 @@ async fn upload_file(socket: &mut TcpStream) {
         },
         Err(e) => {
             send_negative(socket, None).await;
+
             panic!("Error: {}", e);
         }
     };
     
-    let filename = get_filename(socket).await;
+    let (mut file, path) = match get_filename(socket).await {
+        Ok(filename) => {
+            let path = format!("{}/{}", directory, filename);
+
+            let file = match tokio::fs::File::create_new(&path).await {
+                Ok(f) => f,
+                Err(e) => {
+                    delete_dir_if_empty(&directory).await;
+
+                    send_negative(socket, Some("File already exists")).await;
+
+                    panic!("Error: {}", e);
+                }
+            };
+
+            send_positive(socket).await;
+
+            (file, path)
+        }
+        Err(_) => {
+            delete_dir_if_empty(&directory).await;
+
+            send_negative(socket, None).await;
+
+            panic!("Invalid filename");
+        }
+    };
+
+    let contents = match rvc_file_bytes(socket, TIMEOUT_FILE_UPLOAD).await {
+        Ok(c) => {
+            send_positive(socket).await;
+
+            c
+        }
+        Err(e) => {
+            tokio::fs::remove_file(path).await.unwrap();
+            delete_dir_if_empty(&directory).await;
+            send_negative(socket, None).await;
+            panic!("Error: {}", e);
+        }
+    };
+
+    match file.write_all(&contents).await {
+        Ok(_) => (),
+        Err(e) => {
+            send_negative(socket, None).await;
+            tokio::fs::remove_file(path).await.unwrap();
+            panic!("Error: {}", e);
+        }
+    };
+}
+
+async fn delete_dir_if_empty(directory: &str) {
+    if tokio::fs::read_dir(directory).await.unwrap().next_entry().await.unwrap().is_none() {
+        tokio::fs::remove_dir_all(directory).await.unwrap();
+    }
 }
 
 async fn get_filename(socket: &mut TcpStream) -> Result<String, ()> {
@@ -131,30 +194,29 @@ fn check_bucket() -> Result<(), std::io::Error> {
 //     (name.to_string(), ext.to_string())
 // }
 
-// async fn rvc_file_bytes(socket: &mut TcpStream) -> Vec<u8> {
-//     let mut contents: Vec<u8> = Vec::new();
+#[instrument(skip(socket))]
+pub async fn rvc_file_bytes(
+    socket: &mut TcpStream,
+    read_timeout: Duration,
+) -> io::Result<Vec<u8>> {
+    let mut reader = BufReader::new(socket);
+    let mut contents = Vec::new();
     
-//     loop {
-//         let mut buffer = [0; 1024];
-//         let n = match tokio::time::timeout(tokio::time::Duration::from_secs(5), 
-//         socket.read(&mut buffer)).await.unwrap() {
-//             Ok(n) => n,
-//             Err(_) => {
-//                 panic!("Read timed out");
-//             }
-//         };
-
-//         eprintln!("Read {} bytes", n);
-
-//         if n == 0 || n < 1024 {
-//             break;
-//         }
-
-//         contents.extend_from_slice(&buffer);
-//     }
-
-//     contents
-// }
+    match timeout(read_timeout, reader.read_to_end(&mut contents)).await {
+        Err(_) => {
+            error!("read_to_end timed out after {:?}", read_timeout);
+            Err(io::Error::new(io::ErrorKind::TimedOut, "read timed out"))
+        }
+        Ok(Err(e)) => {
+            error!("I/O error during read: {}", e);
+            Err(e)
+        }
+        Ok(Ok(bytes_read)) => {
+            debug!("Completed read_to_end: {} bytes", bytes_read);
+            Ok(contents)
+        }
+    }
+}
 
 // fn build_file(name: String, ext: String, contents: Vec<u8>) -> Result<(), std::io::Error> {
 //     dotenvy::dotenv().ok();

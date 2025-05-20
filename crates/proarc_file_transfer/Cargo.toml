@@ -8,3 +8,4 @@ proarc_utils = { path = "../proarc_utils" }
 
 tokio = { version = "1.0", features = ["full"] }
 dotenvy = "0.15.7"
+tracing = "0.1.41"
