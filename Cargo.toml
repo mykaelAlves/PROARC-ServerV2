@@ -1,24 +1,16 @@
-[workspace]
-members = [
-    "crates/*",
-]
-
 [package]
-name = "PROARC-ServerV2"
+name = "proarc_server_v2"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-proarc_connection = { path = "crates/proarc_connection" }
-proarc_database = { path = "crates/proarc_database" }
-proarc_file_transfer = { path = "crates/proarc_file_transfer" }
-proarc_utils = { path = "crates/proarc_utils" }
-
-tokio = { version = "1.0", features = ["full"] }
+chrono = "0.4.41"
+ctrlc = "3.4.7"
 dotenvy = "0.15.7"
-tracing = "0.1.41"
+log = "0.4.27"
+log4rs = "1.3.0"
+sqlx = {version="0.8.6", features=["sqlite"]}
+tokio = {version="1.45.1", features=["full"]}
 
-[[bin]]
-edition = "2021"
-name = "Proarc-Server"
-path = "src/main.rs"
+[profile.test]
+opt-level = 2

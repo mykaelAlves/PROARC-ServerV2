@@ -2,5 +2,12 @@ target/
 tokens/
 bucket/
 
-Cargo.lock
 .env
+
+# Added by cargo
+
+/target
+
+*.db
+
+src/env.rs
