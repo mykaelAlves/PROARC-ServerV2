@@ -58,7 +58,7 @@ mod tests_token
     }
 
     #[test]
-    fn validate_user_token_fail() 
+    fn validate_token_fail() 
     {
         setup();
         let _guard = TestGuard;

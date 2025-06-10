@@ -1,6 +1,70 @@
 use std::env;
 use dotenvy::from_filename;
 
+pub mod auth;
+pub mod actions; 
+pub mod files;
+
+pub const CONFIG_DIR: &str = "config";
+pub const ENV_FILE: &str = ".env";
+pub const LOG_YAML: &str = "log4rs.yaml";
+
+pub const OK: &str = "OK";
+pub const NOT_OK: &str = "NOT OK";
+
+pub fn get_env_var(name: &str) -> String 
+{
+    env::var(name).expect(format!("{name} must be set").as_str())
+}
+
+pub fn load_env()
+{
+    from_filename(format!("{CONFIG_DIR}/{ENV_FILE}").as_str()).ok();
+}
+
+pub fn info(msg: &str)
+{
+    let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
+
+    println!("[{}INFO{}][{time}] {msg}",
+        color::color_bright_blue,
+        color::color_reset,
+    );
+}
+
+pub fn warn(msg: &str)
+{
+    let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
+
+    let display = format!("[{}WARNING{}][{time}] {msg}",
+        color::color_bright_yellow,
+        color::color_reset,
+    );
+
+    println!("{display}");
+    write_to_log(&display);
+}
+
+pub fn err(msg: &str)
+{
+    let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
+
+    let display = format!("[{}ERROR{}][{time}] {msg}",
+        color::color_bright_red,
+        color::color_reset,
+    );
+
+    println!("{display}");
+    write_to_log(&display);
+    panic!("{display}");
+}
+
+fn write_to_log(msg: &str)
+{
+    // TODO
+}
+
+// https://github.com/eliasjonsson023/inline_colorization/blob/master/src/lib.rs
 #[allow(unused)]
 mod color 
 {
@@ -84,67 +148,4 @@ mod color
     pub const bg_bright_white: &str = "\x1B[107m";
     #[allow(non_upper_case_globals)]
     pub const bg_reset: &str = "\x1B[49m";
-}
-
-pub mod auth;
-pub mod actions; 
-pub mod files;
-
-pub const CONFIG_DIR: &str = "config";
-pub const ENV_FILE: &str = ".env";
-pub const LOG_YAML: &str = "log4rs.yaml";
-
-pub const OK: &str = "OK";
-pub const NOT_OK: &str = "NOT OK";
-
-pub fn get_env_var(name: &str) -> String 
-{
-    env::var(name).expect(format!("{name} must be set").as_str())
-}
-
-pub fn load_env()
-{
-    from_filename(format!("{CONFIG_DIR}/{ENV_FILE}").as_str()).ok();
-}
-
-pub fn info(msg: &str)
-{
-    let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
-
-    println!("[{}INFO{}][{time}] {msg}",
-        color::color_bright_blue,
-        color::color_reset,
-    );
-}
-
-pub fn warn(msg: &str)
-{
-    let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
-
-    let display = format!("[{}WARNING{}][{time}] {msg}",
-        color::color_bright_yellow,
-        color::color_reset,
-    );
-
-    println!("{display}");
-    write_to_log(&display);
-}
-
-pub fn err(msg: &str)
-{
-    let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
-
-    let display = format!("[{}ERROR{}][{time}] {msg}",
-        color::color_bright_red,
-        color::color_reset,
-    );
-
-    println!("{display}");
-    write_to_log(&display);
-    panic!("{display}");
-}
-
-fn write_to_log(msg: &str)
-{
-    // TODO
 }
