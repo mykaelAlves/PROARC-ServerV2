@@ -1,5 +1,7 @@
 use std::env;
 use dotenvy::from_filename;
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+
 
 pub mod auth;
 pub mod actions; 
@@ -9,8 +11,52 @@ pub const CONFIG_DIR: &str = "config";
 pub const ENV_FILE: &str = ".env";
 pub const LOG_YAML: &str = "log4rs.yaml";
 
+pub const DEFAULT_BUFFER_SIZE: usize = 1024;
+
 pub const OK: &str = "OK";
 pub const NOT_OK: &str = "NOT OK";
+
+pub async fn positive(socket: &mut TcpStream)
+{
+    match socket.write_all(OK.as_bytes()).await
+    {
+        Ok(_) => {},
+        Err(_) => {
+            warn("Failed to send positive");
+        }
+    }
+
+    socket.flush().await.unwrap();
+}
+
+pub async fn negative(socket: &mut TcpStream, msg: &str)
+{
+    let msg = format!("{NOT_OK}: {msg}");
+
+
+    match socket.write_all(msg.as_bytes()).await
+    {
+        Ok(_) => {},
+        Err(_) => {
+            warn("Failed to send negative");
+        }
+    }
+
+    socket.flush().await.unwrap();
+}
+
+pub async fn read_from_stream_as_utf8(socket: &mut TcpStream) -> String
+{
+    let mut buffer = [0; DEFAULT_BUFFER_SIZE];
+
+    match socket.read(&mut buffer).await {
+        Ok(_) => String::from_utf8_lossy(&buffer).to_string().replace("/0", ""),
+        Err(e) => {
+            err(&format!("Failed to read from stream: {e}"));
+            "".to_string()
+        }
+    }
+}
 
 pub fn get_env_var(name: &str) -> String 
 {

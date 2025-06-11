@@ -1,6 +1,8 @@
 target/
 tokens/
 bucket/
+venv/
+db/
 
 .env
 
