@@ -1,4 +1,3 @@
-use tokio::io::AsyncWriteExt;
 use tokio::{fs, task, join};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::signal;
@@ -6,7 +5,8 @@ use tokio::signal;
 use std::error::Error as StdError;
 
 use proarc_server_v2::{
-    auth, create_log_file, err, get_env_var, info, load_env, read_from_stream_as_utf8, warn
+    auth, create_log_file, err, get_env_var, info, load_env, negative, positive,
+    read_from_stream_as_utf8, shutdown_socket, warn
 };
 
 
@@ -70,35 +70,30 @@ async fn server_init()
         tokio::select! 
         {
             biased;
-            _ = signal::ctrl_c() => {
+            _ = signal::ctrl_c() => 
+            {
                 warn("Ctrl-C received, initiating shutdown...");
                 break;
             }
             result = listener.accept() => 
             {
-                match result {
-                    Ok((mut socket, addr)) => {
+                match result 
+                {
+                    Ok((mut socket, addr)) => 
+                    {
                         info(&format!("Accepted connection from: {}", addr));
                         
                         tokio::spawn(async move 
                         {
-                            handle_connection(&mut socket).await;
-
-                            match socket.shutdown().await
-                            {
-                                Ok(_) => {},
-                                Err(e) => 
-                                {
-                                    warn(
-                                        &format!("Failed to shutdown connection from {}: {}", addr, e
-                                    ));
-                                }
-                            }
+                            handle_connection(&mut socket).await;    // <-- main pipeline
+                            shutdown_socket(&mut socket).await;
+                            
                             info(&format!("Connection from {} closed", addr));
                         });
                     }
-                    Err(e) => {
-                        warn(&format!("Failed to accept connection: {}", e));
+                    Err(e) => 
+                    {
+                        err(&format!("Failed to accept connection: {}", e));
                         break;
                     }
                 }
@@ -119,18 +114,28 @@ async fn handle_connection(socket: &mut TcpStream)
     {
         auth::RequestType::AUTH =>
         {
-            todo!("Auth request")
+            positive(socket).await;
+
+            auth::login(socket).await;
         }
         auth::RequestType::VALID =>
         {
+            positive(socket).await;
+
             todo!("Valid request")
         }
         auth::RequestType::INVALID =>
         {
-            todo!("Invalid request")
+            warn("Invalid token received");
+
+            negative(socket, "Invalid token").await;
         }
         auth::RequestType::ADM =>
         {
+            warn("ADM token received");
+
+            positive(socket).await;
+
             todo!("ADM request")
         }
     }

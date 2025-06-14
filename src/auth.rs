@@ -35,7 +35,7 @@ pub fn validate_token(token: &str) -> RequestType
     }
 }
 
-pub async fn auth(socket: &mut TcpStream)
+pub async fn login(socket: &mut TcpStream)
 {
 
 }
