@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, io::Write};
 use dotenvy::from_filename;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 
@@ -50,9 +50,12 @@ pub async fn read_from_stream_as_utf8(socket: &mut TcpStream) -> String
     let mut buffer = [0; DEFAULT_BUFFER_SIZE];
 
     match socket.read(&mut buffer).await {
-        Ok(_) => String::from_utf8_lossy(&buffer).to_string().replace("/0", ""),
+        Ok(n) => String::from_utf8_lossy(&buffer[..n])
+            .replace('\0', "")
+            .to_string(),
         Err(e) => {
             err(&format!("Failed to read from stream: {e}"));
+            
             "".to_string()
         }
     }
@@ -107,7 +110,32 @@ pub fn err(msg: &str)
 
 fn write_to_log(msg: &str)
 {
-    // TODO
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .open("log/latest.log")
+        .unwrap();
+
+    match file.write(msg.as_bytes())
+    {
+        Ok(_) => {},
+        Err(e) =>
+        {
+            panic!("Failed to write to log: {e}"); // dont use err as it causes recursion
+        }
+    }
+}
+
+pub async fn create_log_file() 
+{
+    //let time = chrono::Local::now().format("%d-%m-%Y_%H%M%S");
+
+    match tokio::fs::write(&format!("log/latest.log"), "").await
+    {
+        Ok(_) => {},
+        Err(e) => {
+            err(&format!("Failed to create log file: {e}"));
+        }
+    }
 }
 
 // https://github.com/eliasjonsson023/inline_colorization/blob/master/src/lib.rs

@@ -6,7 +6,7 @@ use tokio::signal;
 use std::error::Error as StdError;
 
 use proarc_server_v2::{
-    auth, err, get_env_var, info, load_env, read_from_stream_as_utf8, warn
+    auth, create_log_file, err, get_env_var, info, load_env, read_from_stream_as_utf8, warn
 };
 
 
@@ -40,6 +40,8 @@ async fn setup()
     let dotenv_future = task::spawn_blocking(| | load_env());
 
     let _ = join!(create_dir_future, dotenv_future);
+
+    create_log_file().await;
 
     info("Setup complete");
 }
@@ -109,7 +111,7 @@ async fn handle_connection(socket: &mut TcpStream)
 {
     let token = read_from_stream_as_utf8(socket).await;
 
-    info(&format!("Token: {token}"));
+    info(&format!("({}) Received token: {token}", socket.peer_addr().unwrap())); // make fn to get addr
 
     let request_type = auth::validate_token(&token);
 

@@ -3,6 +3,7 @@ tokens/
 bucket/
 venv/
 db/
+log/
 
 .env
 

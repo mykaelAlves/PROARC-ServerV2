@@ -1,5 +1,7 @@
 use crate::get_env_var;
 
+use tokio::net::TcpStream;
+
 const AUTH_TOKEN: &str = "nil";
 
 pub enum RequestType
@@ -31,4 +33,9 @@ pub fn validate_token(token: &str) -> RequestType
     {
         return RequestType::INVALID;
     }
+}
+
+pub async fn auth(socket: &mut TcpStream)
+{
+
 }
