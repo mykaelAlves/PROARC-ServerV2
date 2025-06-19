@@ -1,9 +1,12 @@
-use std::{env, io::Write};
 use dotenvy::from_filename;
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
+use std::{env, io::Write};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
+pub mod actions;
 pub mod auth;
-pub mod actions; 
 pub mod files;
 
 pub const CONFIG_DIR: &str = "config";
@@ -14,13 +17,10 @@ pub const DEFAULT_BUFFER_SIZE: usize = 1024;
 pub const OK: &str = "OK";
 pub const NOT_OK: &str = "NOT OK";
 
-pub async fn positive(socket: &mut TcpStream)
-{
-    match socket.write_all(OK.as_bytes()).await
-    {
-        Ok(_) => {},
-        Err(_) => 
-        {
+pub async fn positive(socket: &mut TcpStream) {
+    match socket.write_all(OK.as_bytes()).await {
+        Ok(_) => {}
+        Err(_) => {
             warn("Failed to send positive");
         }
     }
@@ -28,14 +28,11 @@ pub async fn positive(socket: &mut TcpStream)
     socket.flush().await.unwrap();
 }
 
-pub async fn negative(socket: &mut TcpStream, msg: &str)
-{
+pub async fn negative(socket: &mut TcpStream, msg: &str) {
     let msg = format!("{NOT_OK}: {msg}");
 
-
-    match socket.write_all(msg.as_bytes()).await
-    {
-        Ok(_) => {},
+    match socket.write_all(msg.as_bytes()).await {
+        Ok(_) => {}
         Err(_) => {
             warn("Failed to send negative");
         }
@@ -45,8 +42,7 @@ pub async fn negative(socket: &mut TcpStream, msg: &str)
 }
 
 // Do better error handling
-pub async fn read_from_stream_as_utf8(socket: &mut TcpStream) -> String
-{
+pub async fn read_from_stream_as_utf8(socket: &mut TcpStream) -> String {
     let mut buffer = [0; DEFAULT_BUFFER_SIZE];
 
     match socket.read(&mut buffer).await {
@@ -55,7 +51,7 @@ pub async fn read_from_stream_as_utf8(socket: &mut TcpStream) -> String
             .to_string(),
         Err(e) => {
             warn(&format!("Failed to read from stream: {e}"));
-            
+
             "".to_string()
         }
     }
@@ -69,31 +65,29 @@ pub async fn read_to_string_from_stream(socket: &mut TcpStream) -> String {
     buffer
 }
 
-pub fn get_env_var(name: &str) -> String 
-{
-    env::var(name).expect(format!("{name} must be set").as_str())
+pub fn get_env_var(name: &str) -> String {
+    env::var(name).unwrap_or_else(|_| panic!("{name} must be set"))
 }
 
-pub fn load_env()
-{
+pub fn load_env() {
     from_filename(format!("{CONFIG_DIR}/{ENV_FILE}").as_str()).ok();
 }
 
-pub fn info(msg: &str)
-{
+pub fn info(msg: &str) {
     let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
 
-    println!("[{}INFO{}][{time}] {msg}",
+    println!(
+        "[{}INFO{}][{time}] {msg}",
         color::color_bright_blue,
         color::color_reset,
     );
 }
 
-pub fn warn(msg: &str)
-{
+pub fn warn(msg: &str) {
     let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
 
-    let display = format!("[{}WARNING{}][{time}] {msg}",
+    let display = format!(
+        "[{}WARNING{}][{time}] {msg}",
         color::color_bright_yellow,
         color::color_reset,
     );
@@ -102,11 +96,11 @@ pub fn warn(msg: &str)
     write_to_log(&display);
 }
 
-pub fn err(msg: &str)
-{
+pub fn err(msg: &str) {
     let time = chrono::Local::now().format("%d/%m/%Y %H:%M:%S");
 
-    let display = format!("[{}ERROR{}][{time}] {msg}",
+    let display = format!(
+        "[{}ERROR{}][{time}] {msg}",
         color::color_bright_red,
         color::color_reset,
     );
@@ -116,46 +110,39 @@ pub fn err(msg: &str)
     panic!("{display}");
 }
 
-fn write_to_log(msg: &str)
-{
+fn write_to_log(msg: &str) {
     let mut file = std::fs::OpenOptions::new()
         .append(true)
         .open("log/latest.log")
         .unwrap();
 
-    match file.write(msg.as_bytes())
-    {
-        Ok(_) => {},
-        Err(e) =>
-        {
+    match file.write_all(msg.as_bytes()) {
+        Ok(_) => {}
+        Err(e) => {
             panic!("Failed to write to log: {e}"); // dont use err as it causes recursion
         }
     }
 }
 
-pub async fn create_log_file() 
-{
+pub async fn create_log_file() {
     //let time = chrono::Local::now().format("%d-%m-%Y_%H%M%S");
 
-    match tokio::fs::write(&format!("log/latest.log"), "").await
-    {
-        Ok(_) => {},
+    match tokio::fs::write(&format!("log/latest.log"), "").await {
+        Ok(_) => {}
         Err(e) => {
             err(&format!("Failed to create log file: {e}"));
         }
     }
 }
 
-pub async fn shutdown_socket(socket: &mut TcpStream)
-{
-    match socket.shutdown().await
-    {
-        Ok(_) => {},
-        Err(e) => 
-        {
-            err(
-                &format!("Failed to shutdown connection from {}: {}", 
-                socket.peer_addr().unwrap(), e
+pub async fn shutdown_socket(socket: &mut TcpStream) {
+    match socket.shutdown().await {
+        Ok(_) => {}
+        Err(e) => {
+            err(&format!(
+                "Failed to shutdown connection from {}: {}",
+                socket.peer_addr().unwrap(),
+                e
             ));
         }
     }
@@ -163,8 +150,7 @@ pub async fn shutdown_socket(socket: &mut TcpStream)
 
 // https://github.com/eliasjonsson023/inline_colorization/blob/master/src/lib.rs
 #[allow(unused)]
-mod color 
-{
+mod color {
     #[allow(non_upper_case_globals)]
     pub const style_bold: &str = "\x1B[1m";
     // #[allow(non_upper_case_globals)]
